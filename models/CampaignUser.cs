@@ -1,17 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TheEnchiridion.models
 {
-    [Table("campaign_user")]
     public class CampaignUser
     {
-        [Column("id")]
+        [Key]
         public int Id { get; set; }
-        [Column("userid")]
         public required string UserId { get; set; }
-        [Column("campaignid")]
+        [ForeignKey("UserId")]
+        public User? User { get; set; }
         public required int CampaignId { get; set; }
-        [Column("isowner")]
+        [ForeignKey("CampaignId")]
+        public Campaign? Campaign { get; set; }
         public required bool IsOwner { get; set; }
     }
 }

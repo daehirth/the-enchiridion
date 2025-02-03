@@ -3,45 +3,60 @@ using TheEnchiridion.context;
 using Microsoft.AspNetCore.Mvc;
 using System.Data.Common;
 using TheEnchiridion.services;
+using Microsoft.AspNetCore.Authorization;
+using TheEnchiridion.models.requests;
 
 namespace TheEnchiridion.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
     public class CampaignController : ControllerBase
     {
         private readonly ICampaignService _campaignService;
-        private readonly IUserService _userService;
         private readonly ILogger<CampaignController> _logger;
 
         public CampaignController(ICampaignService campaignService, 
-            IUserService userService,
             ILogger<CampaignController> logger)
         {
             _campaignService = campaignService;
-            _userService = userService;
             _logger = logger;
         }
 
         [HttpPost]
         [Route("getCampaignsByUser")]
-        public IList<Campaign> getCampaignsByUser(string username)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetCampaignsByUser([FromBody] string userId)
         {
-            return _campaignService.getCampaignsByUser(username);
+            var campaigns = await _campaignService.getCampaignsByUser(userId);
+            if (campaigns.Any())
+                return Ok(campaigns);
+            else
+                return NotFound("No campaigns found for user!");
         }
 
         [HttpPut]
         [Route("createCampaign")]
-        public void createCampaign(string campaignName, string username)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CreateCampaign([FromBody] CreateCampaignRequest request)
         {
-            _campaignService.createCampaign(campaignName, username);
+            
+            return Ok(await _campaignService.createCampaign(request.Name, request.UserId));
         }
 
         [HttpPut]
         [Route("addUserToCampaign")]
-        public void addUserToCampaign(int campaignId, string username)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> addUserToCampaign(UpdateCampaignRequest request)
         {
-            _campaignService.addUserToCampaign(campaignId, username);
+            return Ok(await _campaignService.addUserToCampaign(request.CampaignId, request.UserId));
         }
     }
 }

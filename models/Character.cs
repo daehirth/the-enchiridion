@@ -1,14 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TheEnchiridion.models
 {
-    [Table("character")]
     public class Character
     {
+        [Key]
         public int Id { get; set; }
         public required string Name { get; set; }
         public required string UserId { get; set; }
-        public int? CampaignId { get; set; }
+        [ForeignKey("UserId")]
+        public User? User { get; set; }
         public required string Race { get; set; }
     }
 }

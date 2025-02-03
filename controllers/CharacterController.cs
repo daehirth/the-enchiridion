@@ -3,10 +3,12 @@ using TheEnchiridion.models;
 using TheEnchiridion.models.requests;
 using TheEnchiridion.services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace TheEnchiridion.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("[controller]")]
     public class CharacterController : ControllerBase
     {
@@ -21,16 +23,28 @@ namespace TheEnchiridion.Controllers
 
         [HttpPost]
         [Route("getCharactersByUser")]
-        public IList<Character> getCharactersByUser(string username)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetCharactersByUser([FromBody] string username)
         {
-            return _characterService.getCharactersByUser(username);
+            var charaList = await _characterService.getCharactersByUser(username);
+            if (charaList.Any())
+                return Ok(charaList);
+            else
+                return NotFound("No characters found for user!");
         }
 
         [HttpPut]
         [Route("createCharacter")]
-        public void createCharacter(CreateCharacterRequest request)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CreateCharacter([FromBody] CreateCharacterRequest request)
         {
             _characterService.createCharacter(request);
+            return Ok("Character has been created!");
         }
     }
 }

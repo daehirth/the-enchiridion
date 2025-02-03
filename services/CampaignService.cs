@@ -1,76 +1,98 @@
 ﻿using TheEnchiridion.context;
 using TheEnchiridion.models;
 using System.Reflection.Metadata.Ecma335;
+using Microsoft.EntityFrameworkCore;
+using TheEnchiridion.models.responses;
 
 namespace TheEnchiridion.services
 {
 
     public interface ICampaignService
     {
-        void createCampaign(string campaignName, string username);
-        IList<Campaign> getCampaignsByUser(string username);
-        void addUserToCampaign(int campaignId, string username);
+        Task<Campaign> createCampaign(string campaignName, string username);
+        Task<IList<Campaign>> getCampaignsByUser(string username);
+        Task<AddUserToCampaignResponse> addUserToCampaign(int campaignId, string username);
+
+        Task<IList<Character>> getCharactersByCampaignId(int campaignId);
     }
 
     public class CampaignService: ICampaignService
     {
-        public CampaignService() { }
 
-        public void addUserToCampaign(int campaignId, string username)
+        private readonly EnchiridionDbContext _context;
+        public CampaignService(EnchiridionDbContext context) 
         {
-            using (var context = new DataContext())
-            {
-                var campaignUser = new CampaignUser()
-                {
-                    IsOwner = false,
-                    UserId = username,
-                    CampaignId = campaignId
-                };
-
-                context.CampaignUsers.Add(campaignUser);
-                context.SaveChanges();
-            }
+            _context = context;
         }
 
-        public void createCampaign(string campaignName, string username)
+        public async Task<AddUserToCampaignResponse> addUserToCampaign(int campaignId, string username)
         {
-            using (var context = new DataContext())
+            var dbCampaign = await _context.Campaigns.FirstOrDefaultAsync(x => x.Id == campaignId);
+
+            if (dbCampaign == null)
+                return new AddUserToCampaignResponse()
+                {
+                    Message = "Unable to find campaign!",
+                    Success = false
+                };
+
+            var campaignUser = new CampaignUser()
             {
-                var campaign = new Campaign()
-                {
-                    Name = campaignName
-                };
+                IsOwner = false,
+                UserId = username,
+                CampaignId = campaignId
+            };
 
-                context.Campaigns.Add(campaign);
-                context.SaveChanges();
+            await _context.CampaignUsers.AddAsync(campaignUser);
+            await _context.SaveChangesAsync();
 
-                var campaignUser = new CampaignUser()
-                {
-                    CampaignId = campaign.Id,
-                    UserId = username,
-                    IsOwner = true
-                };
-                context.CampaignUsers.Add(campaignUser);
-                context.SaveChanges();
-            }
-            //TODO: Throw exception for reason why it failed.
+            return new AddUserToCampaignResponse()
+            {
+                Message = $"User was added to the {dbCampaign.Name} campaign!",
+                Success = true
+            };
         }
 
-        public IList<Campaign> getCampaignsByUser(string username)
+        public async Task<Campaign> createCampaign(string campaignName, string userId)
         {
-            using (var context = new DataContext())
+            var campaign = new Campaign()
             {
-                var campaignIds = context.CampaignUsers
-                    .Where(x => x.UserId == username)
-                    .Select(x => x.CampaignId)
-                    .ToList();
+                Name = campaignName
+            };
 
-                var campaigns = context.Campaigns
-                    .Where(x => campaignIds.Contains(x.Id))
-                    .ToList();
+            await _context.Campaigns.AddAsync(campaign);
+            await _context.SaveChangesAsync();
 
-                return campaigns;
-            }
+            var campaignUser = new CampaignUser()
+            {
+                CampaignId = campaign.Id,
+                UserId = userId,
+                IsOwner = true
+            };
+
+            await _context.CampaignUsers.AddAsync(campaignUser);
+            await _context.SaveChangesAsync();
+            return campaign;
+        }
+
+        public async Task<IList<Campaign>> getCampaignsByUser(string userId)
+        {
+            var campaigns = await _context.CampaignUsers
+                .Where(x => x.UserId == userId)
+                .Select(x => x.Campaign)
+                .Distinct()
+                .ToListAsync();
+
+            return campaigns;
+        }
+
+        public async Task<IList<Character>> getCharactersByCampaignId(int campaignId)
+        {
+            var characters = await _context.CampaignCharacters
+                .Where(x => x.CampaignId == campaignId)
+                .Select(x => x.Character)
+                .ToListAsync();
+            return characters;
         }
     }
 }

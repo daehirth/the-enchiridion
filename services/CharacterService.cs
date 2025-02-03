@@ -2,102 +2,74 @@
 using TheEnchiridion.models;
 using TheEnchiridion.models.requests;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore;
 
 namespace TheEnchiridion.services
 {
     public interface ICharacterService
     {
-        IList<Character> getCharactersByUser(string username);
-        Character? getCharacter(int id);
-        IList<Character> getCharactersByCampaignId(int id);
-        IList<Character> getCharactersByNameAndCampaignId(string name, int campaignId);
-        void createCharacter(CreateCharacterRequest request);
-        void setCampaignId(ChangeCharacterCampaignRequest request);
+        Task<IList<Character>> getCharactersByUser(string userId);
+        Task<Character?> getCharacter(int characterId);
+        Task<Character> createCharacter(CreateCharacterRequest request);
     }
 
     public class CharacterService: ICharacterService
     {
 
-        private readonly IUserService _userService;
+        private readonly EnchiridionDbContext _context;
+        private readonly ICampaignService _campaignService;
 
-        public CharacterService(IUserService userService) 
+        public CharacterService(EnchiridionDbContext context, ICampaignService campaignService) 
         {
-            _userService = userService;
+            _context = context;
+            _campaignService = campaignService;
         }
 
-        public IList<Character> getCharactersByUser(string username)
+        public async Task<IList<Character>> getCharactersByUser(string userId)
         {
-            using (var context = new DataContext())
+            var characters = await _context.Characters.Where(x => x.UserId == userId).ToListAsync();
+            return characters;
+        }
+
+        public async Task<Character> getCharacter(int id)
+        {
+            var character = await _context.Characters.FirstOrDefaultAsync(x => x.Id == id);
+            return character;
+        }
+
+        public async Task<Character> createCharacter(CreateCharacterRequest request)
+        {
+            var chara = new Character()
             {
-                var characters = context.Characters.Where(x => x.UserId == username).ToList();
-                return characters;
+                Name = request.Name,
+                Race = request.Race,
+                UserId = request.UserId
+            };
+
+            Campaign? dbCampaign = null;
+
+            if(request.CampaignId != null)
+            {
+                dbCampaign = await _context.Campaigns.FirstOrDefaultAsync(x => x.Id == request.CampaignId);
+                if (dbCampaign == null)
+                    throw new NullReferenceException("Campaign does not exist!");
             }
-        }
 
-        public Character? getCharacter(int id)
-        {
-            using (var context = new DataContext())
-            {
-                var character = context.Characters.FirstOrDefault(x => x.Id == id);
-                return character;
-            }
-        }
+            await _context.Characters.AddAsync(chara);
+            await _context.SaveChangesAsync();
 
-        public IList<Character> getCharactersByCampaignId(int id)
-        {
-            using (var context = new DataContext())
+            if(dbCampaign != null)
             {
-                var characters = context.Characters.Where(x => x.CampaignId == id).ToList();
-                return characters;
-            }
-        }
-
-        public IList<Character> getCharactersByNameAndCampaignId(string name, int campaignId)
-        {
-            using (var context = new DataContext())
-            {
-                var characters = context.Characters.Where(x => x.Name == name && x.CampaignId == campaignId).ToList();
-                return characters;
-            }
-        }
-
-        public void createCharacter(CreateCharacterRequest request)
-        {
-            using (var context = new DataContext())
-            {
-                var user = new Character()
-                {
-                    Name = request.Name,
-                    CampaignId = request.CampaignId,
-                    Race = request.Race,
-                    UserId = request.User.Username
+                var campaignChara = new CampaignCharacter() 
+                { 
+                    CampaignId = dbCampaign.Id,
+                    CharacterId = chara.Id,
                 };
-
-                context.Characters.Add(user);
-                context.SaveChanges();
+                await _context.CampaignCharacters.AddAsync(campaignChara);
+                await _context.SaveChangesAsync();
             }
 
-            //TODO: Throw exception for why it failed.
-        }
-
-        public void setCampaignId(ChangeCharacterCampaignRequest request)
-        {
-            using (var context = new DataContext())
-            {
-                var dbChara = context.Characters.FirstOrDefault(x => x.Id == request.CharacterId);
-                if (dbChara != null)
-                {
-                    if (request.NewCampaignId <= 0)
-                        dbChara.CampaignId = null;
-                    else
-                        dbChara.CampaignId = request.NewCampaignId;
-
-                    context.Characters.Update(dbChara);
-                    context.SaveChanges();
-                }
-            }
-
-            //TODO: Throw exception for why it failed.
+            return chara;
         }
     }
 }

@@ -1,19 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TheEnchiridion.models
 {
-    [Table("character_relation")]
     public class CharacterRelation
     {
-        [Column("id")]
+        [Key]
         public int Id { get; set; }
-        [Column("from_character")]
-        public required int FromCharacter { get; set; }
-        [Column("to_character")]
-        public required int ToCharacter { get; set; }
-        [Column("relation")]
+        public required int FromCharacterId { get; set; }
+        [ForeignKey("FromCharacterId")]
+        public Character? FromCharacter { get; set; }
+        public required int ToCharacterId { get; set; }
+        [ForeignKey("ToCharacterId")]
+        public Character? ToCharacter { get; set; }
         public string? Relation { get; set; }
-        [Column("campaignid")]
         public required int CampaignId { get; set; }
+        [ForeignKey("CampaignId")]
+        public Campaign? Campaign { get; set; }
     }
 }

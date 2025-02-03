@@ -2,8 +2,8 @@
 {
     public class ChangeCharacterCampaignRequest
     {
-        public LoginRequest User { get; set; }
-        public int CharacterId { get; set; }
-        public int NewCampaignId { get; set; }
+        public required string UserId { get; set; }
+        public required int CharacterId { get; set; }
+        public required int NewCampaignId { get; set; }
     }
 }
